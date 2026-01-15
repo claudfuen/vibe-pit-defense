@@ -106,6 +106,27 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Reset all game state for fresh start / restart
+    this.towers = [];
+    this.enemies = [];
+    this.projectiles = [];
+    this.floatingTexts = [];
+    this.particles = [];
+    this.selectedTower = 'cannon';
+    this.money = STARTING_MONEY;
+    this.lives = STARTING_LIVES;
+    this.wave = 0;
+    this.waveInProgress = false;
+    this.gameSpeed = 1;
+    this.nextId = 0;
+    this.combo = 0;
+    this.lastKillTime = 0;
+    this.totalKills = 0;
+    this.spawnQueue = [];
+    this.spawnTimer = 0;
+    this.blocked = [];
+    this.towerButtons = [];
+
     this.initBlockedGrid();
     this.createLayers();
     this.drawGround();
@@ -222,13 +243,15 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Start portal (green glow)
+    // Start portal (green glow) - clamp to screen edge
     const start = PATH[0];
-    this.drawPortal(start.x * TILE_SIZE + TILE_SIZE / 2, start.y * TILE_SIZE + TILE_SIZE / 2, 0x27ae60, 'SPAWN');
+    const startX = Math.max(20, start.x * TILE_SIZE + TILE_SIZE / 2);
+    this.drawPortal(startX, start.y * TILE_SIZE + TILE_SIZE / 2, 0x27ae60, 'SPAWN');
 
-    // End portal (red glow) - THE VIBE PIT
+    // End portal (red glow) - THE VIBE PIT - clamp to screen edge
     const end = PATH[PATH.length - 1];
-    this.drawPortal(end.x * TILE_SIZE + TILE_SIZE / 2, end.y * TILE_SIZE + TILE_SIZE / 2, 0xe74c3c, 'VIBE PIT');
+    const endX = Math.min(MAP_COLS * TILE_SIZE - 20, end.x * TILE_SIZE + TILE_SIZE / 2);
+    this.drawPortal(endX, end.y * TILE_SIZE + TILE_SIZE / 2, 0xe74c3c, 'VIBE PIT');
   }
 
   private drawPathLine() {
@@ -641,8 +664,17 @@ export class GameScene extends Phaser.Scene {
       // Show upgrade cost if available
       if (existingTower.level < config.levels.length - 1) {
         const upgradeCost = config.levels[existingTower.level + 1].cost;
-        this.hoverGraphics.fillStyle(0x000000, 0.8);
-        this.hoverGraphics.fillRoundedRect(cx - 40, cy - 50, 80, 20, 4);
+        const canAfford = this.money >= upgradeCost;
+        this.hoverGraphics.fillStyle(0x000000, 0.85);
+        this.hoverGraphics.fillRoundedRect(cx - 50, cy - 55, 100, 24, 4);
+        // Draw upgrade text manually with graphics
+        const upgradeText = this.add.text(cx, cy - 43, `[U] $${upgradeCost}`, {
+          fontSize: '12px',
+          color: canAfford ? '#f1c40f' : '#e74c3c',
+          fontFamily: 'monospace',
+        }).setOrigin(0.5).setDepth(101);
+        // Clean up text next frame
+        this.time.delayedCall(16, () => upgradeText.destroy());
       }
       return;
     }
@@ -791,13 +823,22 @@ export class GameScene extends Phaser.Scene {
 
       // Calculate speed (check slow)
       let speed = enemy.speed;
-      if (enemy.slowedUntil > now && enemy.config.special !== 'immune to slow') {
+      const isSlowed = enemy.slowedUntil > now && enemy.config.special !== 'immune to slow';
+      const body = enemy.graphics.getAt(1) as Phaser.GameObjects.Graphics;
+
+      if (isSlowed) {
         speed *= 0.5;
-        // Slow visual
-        const body = enemy.graphics.getAt(1) as Phaser.GameObjects.Graphics;
+        // Slow visual - blue glow
         body.clear();
         body.fillStyle(0x85c1e9, 0.5);
         body.fillCircle(0, 0, enemy.config.size + 3);
+        body.fillStyle(enemy.config.color, 1);
+        body.fillCircle(0, 0, enemy.config.size);
+        body.fillStyle(enemy.config.accentColor, 1);
+        body.fillCircle(-enemy.config.size * 0.2, -enemy.config.size * 0.2, enemy.config.size * 0.4);
+      } else {
+        // Normal visual - redraw without glow
+        body.clear();
         body.fillStyle(enemy.config.color, 1);
         body.fillCircle(0, 0, enemy.config.size);
         body.fillStyle(enemy.config.accentColor, 1);

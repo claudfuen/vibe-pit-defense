@@ -223,11 +223,12 @@ export class MenuScene extends Phaser.Scene {
 
     const instructions = `
 OBJECTIVE
-Prevent enemies from reaching the exit. You lose lives for each enemy that escapes.
+Prevent enemies from reaching the Vibe Pit. You lose lives for each enemy that escapes.
 
 CONTROLS
 • Click on grass to place towers
 • Press 1-5 to select tower type
+• Hover over tower + U to upgrade
 • Hover over tower + R to sell (70% refund)
 • SPACE to start the next wave
 • +/- to change game speed
@@ -240,10 +241,9 @@ TOWERS
 5. Tesla - Chain lightning between enemies
 
 TIPS
-• Mix tower types for best results
+• Upgrading towers is more efficient than building new ones
 • Frost towers are great at chokepoints
-• Upgrade towers instead of building more
-• Save money for boss waves (every 10 waves)
+• Boss waves spawn every 10 waves - save up!
     `.trim();
 
     const text = this.add.text(width / 2, 300, instructions, {
