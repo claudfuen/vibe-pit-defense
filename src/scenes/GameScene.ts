@@ -97,6 +97,7 @@ export class GameScene extends Phaser.Scene {
   private towerButtons: Phaser.GameObjects.Container[] = [];
   private waveButton!: Phaser.GameObjects.Container;
   private selectedTowerInfo!: Phaser.GameObjects.Container;
+  private wavePreview!: Phaser.GameObjects.Container;
 
   // Grid
   private blocked: boolean[][] = [];
@@ -375,6 +376,49 @@ export class GameScene extends Phaser.Scene {
     }).setInteractive({ useHandCursor: true });
     speedDown.on('pointerdown', () => this.changeSpeed(-1));
     this.uiLayer.add(speedDown);
+
+    // Wave preview at bottom of game area
+    this.wavePreview = this.add.container(10, MAP_ROWS * TILE_SIZE - 60);
+    this.updateWavePreview();
+  }
+
+  private updateWavePreview() {
+    this.wavePreview.removeAll(true);
+
+    const nextWave = this.wave + 1;
+    const waveConfig = generateWave(nextWave);
+
+    // Background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.7);
+    bg.fillRoundedRect(0, 0, 350, 55, 6);
+    this.wavePreview.add(bg);
+
+    // Title
+    const title = this.add.text(10, 8, `NEXT: Wave ${nextWave}`, {
+      fontSize: '11px', color: '#9b59b6', fontFamily: 'monospace', fontStyle: 'bold'
+    });
+    this.wavePreview.add(title);
+
+    // Enemy icons
+    let iconX = 10;
+    for (const group of waveConfig.enemies) {
+      const config = ENEMIES[group.type];
+
+      // Icon
+      const icon = this.add.graphics();
+      icon.fillStyle(config.color, 1);
+      icon.fillCircle(iconX + 10, 38, 8);
+      this.wavePreview.add(icon);
+
+      // Count and name
+      const label = this.add.text(iconX + 22, 30, `${config.emoji}x${group.count}`, {
+        fontSize: '10px', color: '#ffffff', fontFamily: 'monospace'
+      });
+      this.wavePreview.add(label);
+
+      iconX += 65;
+    }
   }
 
   private createTowerButton(x: number, y: number, type: TowerType, key: number): Phaser.GameObjects.Container {
@@ -653,6 +697,39 @@ export class GameScene extends Phaser.Scene {
 
     const cx = gx * TILE_SIZE + TILE_SIZE / 2;
     const cy = gy * TILE_SIZE + TILE_SIZE / 2;
+
+    // Check if hovering over an enemy - show their name
+    const hoveredEnemy = this.enemies.find(e => {
+      const dist = Math.sqrt((p.x - e.x) ** 2 + (p.y - e.y) ** 2);
+      return dist < e.config.size + 5;
+    });
+
+    if (hoveredEnemy) {
+      const config = hoveredEnemy.config;
+      const boxWidth = 120;
+      const boxHeight = 50;
+      const bx = Math.min(hoveredEnemy.x, MAP_COLS * TILE_SIZE - boxWidth - 10);
+      const by = hoveredEnemy.y - config.size - boxHeight - 10;
+
+      this.hoverGraphics.fillStyle(0x000000, 0.9);
+      this.hoverGraphics.fillRoundedRect(bx - 10, by, boxWidth, boxHeight, 6);
+      this.hoverGraphics.lineStyle(2, config.color, 1);
+      this.hoverGraphics.strokeRoundedRect(bx - 10, by, boxWidth, boxHeight, 6);
+
+      const nameText = this.add.text(bx + boxWidth / 2 - 10, by + 10, `${config.emoji} ${config.name}`, {
+        fontSize: '12px', color: '#ffffff', fontFamily: 'monospace', fontStyle: 'bold'
+      }).setOrigin(0.5, 0).setDepth(150);
+
+      const titleText = this.add.text(bx + boxWidth / 2 - 10, by + 28, config.title, {
+        fontSize: '9px', color: '#95a5a6', fontFamily: 'monospace'
+      }).setOrigin(0.5, 0).setDepth(150);
+
+      this.time.delayedCall(16, () => {
+        nameText.destroy();
+        titleText.destroy();
+      });
+      return;
+    }
 
     const existingTower = this.towers.find(t => t.x === gx && t.y === gy);
     if (existingTower) {
@@ -1141,6 +1218,7 @@ export class GameScene extends Phaser.Scene {
     this.waveButton.setInteractive({ useHandCursor: true });
 
     this.updateTowerButtons();
+    this.updateWavePreview();
   }
 
   private spawnFloatingText(x: number, y: number, message: string, color: number) {
