@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TOWERS, ENEMIES, GAME_CONFIG, PATH, generateWave, TowerType, EnemyType, TowerConfig } from '../config/gameConfig';
+import { TOWERS, ENEMIES, GAME_CONFIG, PATH, generateWave, TowerType, EnemyType } from '../config/gameConfig';
 
 interface Tower {
   id: number;
@@ -35,6 +35,7 @@ interface Projectile {
   damage: number;
   speed: number;
   type: TowerType;
+  level: number;
   graphics: Phaser.GameObjects.Graphics;
 }
 
@@ -943,6 +944,7 @@ export class GameScene extends Phaser.Scene {
       damage: level.damage,
       speed: 500,
       type: tower.type,
+      level: tower.level,
       graphics,
     });
   }
@@ -997,7 +999,7 @@ export class GameScene extends Phaser.Scene {
 
   private applyDamage(proj: Projectile, target: Enemy) {
     const config = TOWERS[proj.type];
-    const level = config.levels[0];
+    const level = config.levels[proj.level];
 
     target.health -= proj.damage;
     this.updateEnemyHealthBar(target);
