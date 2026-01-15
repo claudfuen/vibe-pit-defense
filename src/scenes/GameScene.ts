@@ -150,8 +150,6 @@ export class GameScene extends Phaser.Scene {
     while (x !== x2 || y !== y2) {
       if (x >= 0 && x < MAP_COLS && y >= 0 && y < MAP_ROWS) {
         this.blocked[y][x] = true;
-        if (y > 0) this.blocked[y - 1][x] = true;
-        if (y < MAP_ROWS - 1) this.blocked[y + 1][x] = true;
       }
       if (x !== x2) x += dx;
       if (y !== y2) y += dy;
